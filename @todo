@@ -1,0 +1,3 @@
+check those links:
+    http://llvm.org/docs/AliasAnalysis.html
+    lib/Analysis/MemDepPrinter.cpp 
