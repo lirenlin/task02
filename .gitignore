@@ -1,0 +1,4 @@
+./Release+Asserts/*
+*.swp
+*.o
+*.so
