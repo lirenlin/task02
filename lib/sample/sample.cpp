@@ -8,10 +8,28 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/SetVector.h"
 
+#include "llvm/ADT/GraphTraits.h"
+#include "llvm/Support/GraphWriter.h"
+
 
 using namespace llvm;
 
 namespace {
+    /**
+     * \brief GraphTraits 
+     * GraphTraits specialiyed to draw the graph
+     */
+    template<> struct GraphTraits<const DepSet*> :
+        public GraphTraits<const Instruction*> {
+            static Instruction *getEntryNode(const DepSet *set) {
+                return set->();
+            }
+            // nodes_iterator/begin/end - Allow iteration over all nodes in the set
+            typedef DepSet::const_iterator nodes_iterator;
+            static nodes_iterator nodes_begin(const DepSet *set) { return set->begin(); }
+            static nodes_iterator nodes_end  (const DepSet *set) { return set->end(); }
+        };
+
     /**
      * \brief Memory analysis pass
      * find the memory operation dependecy
@@ -162,11 +180,11 @@ void variablePass::print(raw_ostream &OS, const Module *M) const {
             OS << "    ";
             OS << DepTypeStr[type];
             /*
-            if (DepBB) {
-                OS << " in block ";
-                WriteAsOperand(OS, DepBB, false, M);
-            }
-            */
+               if (DepBB) {
+               OS << " in block ";
+               WriteAsOperand(OS, DepBB, false, M);
+               }
+               */
             if (DepInst) {
                 OS << " from: ";
                 DepInst->print(OS);
@@ -177,6 +195,11 @@ void variablePass::print(raw_ostream &OS, const Module *M) const {
         Inst->print(OS);
         OS << "************" << '\n';
     }
+    //WriteGraph<DepSet>(errs(), InstDeps, false, "Memory Dependency");
+    //ViewGraph<DepSet>(InstDeps, "graph.dot", false, "Memory Dependency", GraphProgram::DOT);
+
 }
+
+
 
 static RegisterPass<variablePass> X("variablePass", "variable scan Pass", false, true);
