@@ -36,6 +36,24 @@ namespace {
             static nodes_iterator nodes_end  (const DepSetMap::const_iterator *set) { return set->second()->end(); }
         };
 
+    template<> struct GraphTraits<const DepSetMap*> :
+        public GraphTraits<const Instruction*> {
+            typedef const DepSetMap NodeType;
+            typedef DepSet::const_iterator ChildIteratorType;
+
+            static Instruction *getEntryNode(const DepSetMap::const_iterator *ite) {
+                return ite->first();
+            }
+
+            // nodes_iterator/begin/end - Allow iteration over all nodes in the set
+            typedef DepSetMap::const_iterator nodes_iterator;
+            static nodes_iterator nodes_begin(const DepSetMap::const_iterator *set) { return set->begin(); }
+            static nodes_iterator nodes_end  (const DepSetMap::const_iterator *set) { return set->end(); }
+
+            static ChildIteratorType child_begin(const NodeType *set) { return set->second()->begin(); }
+            static ChildIteratorType child_end  (const NodeType *set) { return set->second()->end(); }
+        };
+
     /**
      * \brief Memory analysis pass
      * find the memory operation dependecy
