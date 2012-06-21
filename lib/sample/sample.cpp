@@ -16,18 +16,24 @@ using namespace llvm;
 
 namespace {
     /**
+     * some data type
+     */
+    typedef SmallSetVector<const Instruction *, 4> DepSet;
+    typedef DenseMap<const Instruction *, DepSet> DepSetMap;
+
+    /**
      * \brief GraphTraits 
      * GraphTraits specialiyed to draw the graph
      */
-    template<> struct GraphTraits<const DepSet*> :
+    template<> struct GraphTraits<const DepSetMap::const_iterator*> :
         public GraphTraits<const Instruction*> {
-            static Instruction *getEntryNode(const DepSet *set) {
-                return set->();
+            static Instruction *getEntryNode(const DepSetMap::const_iterator *ite) {
+                return ite->first();
             }
             // nodes_iterator/begin/end - Allow iteration over all nodes in the set
             typedef DepSet::const_iterator nodes_iterator;
-            static nodes_iterator nodes_begin(const DepSet *set) { return set->begin(); }
-            static nodes_iterator nodes_end  (const DepSet *set) { return set->end(); }
+            static nodes_iterator nodes_begin(const DepSetMap::const_iterator *set) { return set->second()->begin(); }
+            static nodes_iterator nodes_end  (const DepSetMap::const_iterator *set) { return set->second()->end(); }
         };
 
     /**
@@ -38,39 +44,14 @@ namespace {
         public:
             variablePass(): FunctionPass(ID){}
             static char ID;
-            Function *F;
 
-            enum DepType {
-                Clobber = 0,
-                Def,
-                NonFuncLocal,
-                Unknown
-            };
-            typedef PointerIntPair<const Instruction *, 2, DepType> InstTypePair;
-            typedef std::pair<InstTypePair, const BasicBlock *> Dep;
-            typedef SmallSetVector<Dep, 4> DepSet;
-            typedef DenseMap<const Instruction *, DepSet> DepSetMap;
 
             virtual bool runOnFunction(Function &F);
             virtual void getAnalysisUsage(AnalysisUsage &AU) const;
-            void print(raw_ostream &OS, const Module *M) const; 
-            static InstTypePair getInstTypePair(MemDepResult dep) {
-                if (dep.isClobber())
-                    return InstTypePair(dep.getInst(), Clobber);
-                if (dep.isDef())
-                    return InstTypePair(dep.getInst(), Def);
-                if (dep.isNonFuncLocal())
-                    return InstTypePair(dep.getInst(), NonFuncLocal);
-                assert(dep.isUnknown() && "unexptected dependence type");
-                return InstTypePair(dep.getInst(), Unknown);
-            }
+            void print(raw_ostream &OS) const; 
 
-            static InstTypePair getInstTypePair(const Instruction* inst, DepType type) {
-                return InstTypePair(inst, type);
-            }
         private:
 
-            static const char *const DepTypeStr[];
             DepSetMap Deps;
 
 
@@ -78,9 +59,6 @@ namespace {
 }
 
 char variablePass::ID = 0;
-const char *const variablePass::DepTypeStr[]
-= {"Clobber", "Def", "NonFuncLocal", "Unknown"};
-
 
 bool variablePass::runOnFunction(Function &F)
 {
@@ -102,8 +80,7 @@ bool variablePass::runOnFunction(Function &F)
         /// local
         if (!Res.isNonLocal()) {
             /// add the result into the dependency vector
-            Deps[inst].insert(std::make_pair(getInstTypePair(Res),
-                        static_cast<BasicBlock *>(0)));
+            Deps[inst].insert(Res.getInst());
             /// function call
         } else if (CallSite CS = cast<Value>(inst)) {
             const MemoryDependenceAnalysis::NonLocalDepInfo &NLDI =
@@ -113,15 +90,14 @@ bool variablePass::runOnFunction(Function &F)
             for (MemoryDependenceAnalysis::NonLocalDepInfo::const_iterator
                     I = NLDI.begin(), E = NLDI.end(); I != E; ++I) {
                 const MemDepResult &Res = I->getResult();
-                InstDeps.insert(std::make_pair(getInstTypePair(Res), I->getBB()));
+                InstDeps.insert(Res.getInst());
             }
         } else {
             SmallVector<NonLocalDepResult, 4> NLDI;
             if (LoadInst *LI = dyn_cast<LoadInst>(inst)) {
                 if (!LI->isUnordered()) {
                     // FIXME: Handle atomic/volatile loads.
-                    Deps[inst].insert(std::make_pair(getInstTypePair(0, Unknown),
-                                static_cast<BasicBlock *>(0)));
+                    Deps[inst].insert(0)
                     continue;
                 }
                 AliasAnalysis::Location Loc = AA.getLocation(LI);
@@ -129,8 +105,7 @@ bool variablePass::runOnFunction(Function &F)
             } else if (StoreInst *SI = dyn_cast<StoreInst>(inst)) {
                 if (!SI->isUnordered()) {
                     // FIXME: Handle atomic/volatile stores.
-                    Deps[inst].insert(std::make_pair(getInstTypePair(0, Unknown),
-                                static_cast<BasicBlock *>(0)));
+                    Deps[inst].insert(0);
                     continue;
                 }
                 AliasAnalysis::Location Loc = AA.getLocation(SI);
@@ -146,11 +121,11 @@ bool variablePass::runOnFunction(Function &F)
             for (SmallVectorImpl<NonLocalDepResult>::const_iterator
                     I = NLDI.begin(), E = NLDI.end(); I != E; ++I) {
                 const MemDepResult &Res = I->getResult();
-                InstDeps.insert(std::make_pair(getInstTypePair(Res), I->getBB()));
+                InstDeps.insert(Res.getInst());
             }
         }
     }
-    print(errs(), NULL);
+    print(errs());
     return false;
 }
 
@@ -161,8 +136,9 @@ void variablePass::getAnalysisUsage(AnalysisUsage &AU) const
     AU.setPreservesAll();
 }
 
-void variablePass::print(raw_ostream &OS, const Module *M) const {
-    for (inst_iterator I = inst_begin(*F), E = inst_end(*F); I != E; ++I) {
+void variablePass::print(raw_ostream &OS) const {
+   /* 
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
         const Instruction *Inst = &*I;
 
         DepSetMap::const_iterator DI = Deps.find(Inst);
@@ -173,31 +149,22 @@ void variablePass::print(raw_ostream &OS, const Module *M) const {
 
         for (DepSet::const_iterator I = InstDeps.begin(), E = InstDeps.end();
                 I != E; ++I) {
-            const Instruction *DepInst = I->first.getPointer();
-            DepType type = I->first.getInt();
-            const BasicBlock *DepBB = I->second;
-
-            OS << "    ";
-            OS << DepTypeStr[type];
-            /*
-               if (DepBB) {
-               OS << " in block ";
-               WriteAsOperand(OS, DepBB, false, M);
-               }
-               */
+            const Instruction *DepInst = I->data();
             if (DepInst) {
                 OS << " from: ";
                 DepInst->print(OS);
             }
             OS << "\n";
         }
-        OS << "************";
+        OS << "***";
         Inst->print(OS);
-        OS << "************" << '\n';
+        OS << "***" << '\n';
     }
+    */
     //WriteGraph<DepSet>(errs(), InstDeps, false, "Memory Dependency");
-    //ViewGraph<DepSet>(InstDeps, "graph.dot", false, "Memory Dependency", GraphProgram::DOT);
-
+    for (DepSetMap::const_iterator I = Deps.begin(), E = Deps.end();
+            I != E; ++I) 
+        ViewGraph<DepSet>(I, "graph.dot", false, "Memory Dependency", GraphProgram::DOT);
 }
 
 
