@@ -63,7 +63,15 @@
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/raw_ostream.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SetVector.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/GraphTraits.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/GraphWriter.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/DOTGraphTraits.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/Path.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/PathV1.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/TimeValue.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/PathV2.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallString.h
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Analysis/MemoryDependenceAnalysis.h:
 
@@ -190,3 +198,19 @@
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SetVector.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/GraphTraits.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/GraphWriter.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/DOTGraphTraits.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/Path.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/PathV1.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/TimeValue.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/PathV2.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallString.h:
