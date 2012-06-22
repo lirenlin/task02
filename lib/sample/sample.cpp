@@ -174,8 +174,10 @@ void MemDepPrinter::print(raw_ostream &OS, const Module *M) const {
                     DepInst->print(OS);
                     OS << "\"];\n";
                 }
+                // link
                 OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
                     << static_cast<const void *>(Inst) << " ";
+                // label of link
                 OS << "[label=\""<< DepTypeStr[type] << "\"]"<< "; \n";
             //if (DepBB) {
                 //OS << " from: ";

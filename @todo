@@ -1,3 +1,9 @@
 check those links:
     http://llvm.org/docs/AliasAnalysis.html
     lib/Analysis/MemDepPrinter.cpp 
+
+MemoryDependenceAnalysis does *memory* def/use analysis(what store does a load depend on)
+The MemDep API assumes that you will call getDependency() first, and  
+then only call getNonLocalPointerDependency() if it returns non- 
+local.  This will return the first instruction that the instruction is  
+dependent on.
