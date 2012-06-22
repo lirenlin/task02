@@ -10,7 +10,7 @@
 using namespace llvm;
 
 namespace {
-    struct MemDepPrinter : public FunctionPass {
+    struct DrawMemDep : public FunctionPass {
         const Function *F;
 
         enum DepType {
@@ -29,18 +29,17 @@ namespace {
         DepSetMap Deps;
 
         static char ID; // Pass identifcation, replacement for typeid
-        MemDepPrinter() : FunctionPass(ID) {
-            initializeMemDepPrinterPass(*PassRegistry::getPassRegistry());
+        DrawMemDep() : FunctionPass(ID) {
         }
 
         virtual bool runOnFunction(Function &F);
 
         void print(raw_ostream &OS, const Module * = 0) const;
 
-        virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-            AU.addRequiredTransitive<AliasAnalysis>();
-            AU.addRequiredTransitive<MemoryDependenceAnalysis>();
-            AU.setPreservesAll();
+        virtual void getAnalysisUsage(AnalysisUsage &Info) const {
+            Info.addRequiredTransitive<AliasAnalysis>();
+            Info.addRequiredTransitive<MemoryDependenceAnalysis>();
+            Info.setPreservesAll();
         }
 
         virtual void releaseMemory() {
@@ -65,16 +64,12 @@ namespace {
     };
 }
 
-char MemDepPrinter::ID = 0;
+char DrawMemDep::ID = 0;
 
-FunctionPass *llvm::createMemDepPrinter() {
-        return new MemDepPrinter();
-    }
-
-const char *const MemDepPrinter::DepTypeStr[]
+const char *const DrawMemDep::DepTypeStr[]
 = {"Clobber", "Def", "NonFuncLocal", "Unknown"};
 
-bool MemDepPrinter::runOnFunction(Function &F) {
+bool DrawMemDep::runOnFunction(Function &F) {
     this->F = &F;
     AliasAnalysis &AA = getAnalysis<AliasAnalysis>();
     MemoryDependenceAnalysis &MDA = getAnalysis<MemoryDependenceAnalysis>();
@@ -140,8 +135,8 @@ bool MemDepPrinter::runOnFunction(Function &F) {
     return false;
 }
 
-void MemDepPrinter::print(raw_ostream &OS, const Module *M) const {
-    OS << "digraph "<< F->getName() << "{ \n";
+void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
+    //OS << "digraph "<< F->getName() << "{ \n";
     for (const_inst_iterator I = inst_begin(*F), E = inst_end(*F); I != E; ++I) {
         const Instruction *Inst = &*I;
 
@@ -183,45 +178,9 @@ void MemDepPrinter::print(raw_ostream &OS, const Module *M) const {
                 //OS << " from: ";
                 //DepInst->print(OS);
             }
-            //OS << "\n";
         }
 
-        //Inst->print(OS);
-        //OS << "\n\n";
     }
-    OS << "}\n";
 }
-/*
-void variablePass::print(raw_ostream &OS, Function &F) const {
-    //print header
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-        const Instruction *Inst = &*I;
 
-        DepSetMap::const_iterator DI = Deps.find(Inst);
-        if (DI == Deps.end())
-            continue;
-
-
-        const DepSet &InstDeps = DI->second;
-
-        for (DepSet::const_iterator I = InstDeps.begin(), E = InstDeps.end();
-                I != E; ++I) {
-            const Instruction *DepInst = *I;
-            if (DepInst) {
-                ///eliminate the duplicate node
-                if(Deps.find(DepInst) == Deps.end())
-                {
-                    OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
-                    DepInst->print(OS);
-                    OS << "\"];\n";
-                }
-                OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
-                    << static_cast<const void *>(Inst) << "; \n";
-            }
-        }
-    }
-    //print tail
-    OS << "}\n";
-}
-*/
-static RegisterPass<MemDepPrinter> X("MemDepPrinter", "print the memory dependency", false, true);
+static RegisterPass<DrawMemDep> X("DrawMemDep", "print the memory dependency", true, true);
