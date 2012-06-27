@@ -11,7 +11,6 @@ using namespace llvm;
 
 namespace {
     struct DrawMemDep : public FunctionPass {
-        const Function *F;
 
         enum DepType {
             Clobber = 0,
@@ -29,6 +28,8 @@ namespace {
         DepSetMap Deps;
 
         static char ID; // Pass identifcation, replacement for typeid
+        const Function *F;
+        std::vector<const Instruction * > instVector ;
         DrawMemDep() : FunctionPass(ID) {
         }
 
@@ -71,6 +72,7 @@ const char *const DrawMemDep::DepTypeStr[]
 
 bool DrawMemDep::runOnFunction(Function &F) {
     this->F = &F;
+    instVector.clear();
     AliasAnalysis &AA = getAnalysis<AliasAnalysis>();
     MemoryDependenceAnalysis &MDA = getAnalysis<MemoryDependenceAnalysis>();
 
@@ -81,6 +83,8 @@ bool DrawMemDep::runOnFunction(Function &F) {
 
         if (!Inst->mayReadFromMemory() && !Inst->mayWriteToMemory())
             continue;
+
+        instVector.push_back(Inst);
 
         MemDepResult Res = MDA.getDependency(Inst);
         if (!Res.isNonLocal()) {
@@ -136,9 +140,17 @@ bool DrawMemDep::runOnFunction(Function &F) {
 }
 
 void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
-    //OS << "digraph "<< F->getName() << "{ \n";
-    for (const_inst_iterator I = inst_begin(*F), E = inst_end(*F); I != E; ++I) {
-        const Instruction *Inst = &*I;
+    OS << "digraph tmp{\n";
+    OS << "node [ \n shape = \"record\"\n]; ";
+
+    // depth and terminator
+    typedef std::pair<int, bool> data;
+    std::pair<int, bool> marker[20] = {std::make_pair(1, false)};
+    int index = 0;
+
+    for (std::vector<const Instruction *>::const_iterator I = instVector.begin(), E = instVector.end();\
+            I != E; ++I, ++index) {
+        const Instruction *Inst = *I;
 
         DepSetMap::const_iterator DI = Deps.find(Inst);
         if (DI == Deps.end())
@@ -156,31 +168,50 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
             DepType type = I->first.getInt();
             const BasicBlock *DepBB = I->second;
 
-            //OS << "    ";
-            //OS << DepTypeStr[type];
-            //if (DepBB) {
-            // OS << " in block ";
-            //WriteAsOperand(OS, DepBB, /*PrintType=*/false, M);
-            // }
             if (DepInst) {
-                if(Deps.find(DepInst) == Deps.end())
+                std::vector<const Instruction *>::const_iterator tmp = std::find(instVector.begin(), instVector.end(), DepInst);
+                //DepSetMap::const_iterator tmp = Deps.find(DepInst);
+                if(tmp == instVector.end())
                 {
+                    marker[index].first = 1;
+                    marker[index].second = true;
+
                     OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
                     DepInst->print(OS);
                     OS << "\"];\n";
+
+                }
+                else 
+                {
+                    int pre_index = std::distance(instVector.begin(), tmp);
+                    OS << "***********"<< pre_index << "***" << marker[pre_index].first << '\n';
+                    marker[pre_index].second = false;
+
+                    OS << (marker[index].first = marker[pre_index].first + 1) << '\n';
+                    marker[index].second = true;
                 }
                 // link
                 OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
                     << static_cast<const void *>(Inst) << " ";
-                // label of link
                 OS << "[label=\""<< DepTypeStr[type] << "\"]"<< "; \n";
-            //if (DepBB) {
+
+                //if (DepBB) {
                 //OS << " from: ";
                 //DepInst->print(OS);
             }
+            }
+
+        }
+
+        OS << "}\n";
+
+        for(int i = 0; i < Deps.size(); ++i) 
+        {
+            OS << "depth is " << marker[i].first \
+                << ", terminator? " << marker[i].second << "\n";
         }
 
     }
-}
 
-static RegisterPass<DrawMemDep> X("DrawMemDep", "print the memory dependency", true, true);
+    static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
+
