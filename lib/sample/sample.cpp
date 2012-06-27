@@ -36,6 +36,7 @@ namespace {
         virtual bool runOnFunction(Function &F);
 
         void print(raw_ostream &OS, const Module * = 0) const;
+        void addEdge(int, int, std::pair<int, bool> marker[]) const;
 
         virtual void getAnalysisUsage(AnalysisUsage &Info) const {
             Info.addRequiredTransitive<AliasAnalysis>();
@@ -144,8 +145,7 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
     OS << "node [ \n shape = \"record\"\n]; ";
 
     // depth and terminator
-    typedef std::pair<int, bool> data;
-    std::pair<int, bool> marker[20] = {std::make_pair(1, false)};
+    std::pair<int, bool> marker[20] ;
     int index = 0;
 
     for (std::vector<const Instruction *>::const_iterator I = instVector.begin(), E = instVector.end();\
@@ -184,33 +184,53 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
                 else 
                 {
                     int pre_index = std::distance(instVector.begin(), tmp);
-                    OS << "***********"<< pre_index << "***" << marker[pre_index].first << '\n';
                     marker[pre_index].second = false;
 
-                    OS << (marker[index].first = marker[pre_index].first + 1) << '\n';
+                    marker[index].first = marker[pre_index].first + 1;
                     marker[index].second = true;
                 }
+
                 // link
                 OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
                     << static_cast<const void *>(Inst) << " ";
                 OS << "[label=\""<< DepTypeStr[type] << "\"]"<< "; \n";
 
-                //if (DepBB) {
-                //OS << " from: ";
-                //DepInst->print(OS);
             }
             }
 
         }
 
+        /*
+           for(int i = 0; i < Deps.size(); ++i) 
+           {
+           if( marker[i].second ) 
+           OS << "depth is " << marker[i].first \
+           << ", terminator? " << marker[i].second << "\n";
+           }
+           */
+        addEdge(0, int(instVector.size()), marker);
         OS << "}\n";
 
-        for(int i = 0; i < Deps.size(); ++i) 
-        {
-            OS << "depth is " << marker[i].first \
-                << ", terminator? " << marker[i].second << "\n";
-        }
+    }
 
+    void DrawMemDep::addEdge(int start, int end, std::pair<int, bool> marker[]) const
+    {
+        if(start == end) return;
+        for(int i = start; i < end; ++i)
+            if(marker[i].second)
+            {
+                start = i;
+                break;
+            }
+
+        for(int i = start+1; i < end; ++i)
+            if(marker[i].second)
+            {
+                errs() << "\tNode"<< static_cast<const void *>(instVector[start]) << " -> Node" \
+                    << static_cast<const void *>(instVector[i]) << " ";
+                errs() << "[style=dotted];\n";
+            }
+        addEdge(start+1, end, marker);
     }
 
     static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
