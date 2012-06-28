@@ -57,13 +57,16 @@
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/OwningPtr.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Analysis/Passes.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Assembly/Writer.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/InstIterator.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/Function.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalValue.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/raw_ostream.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SetVector.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ValueSymbolTable.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/StringMap.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/Allocator.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/AlignOf.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Function.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalValue.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Analysis/MemoryDependenceAnalysis.h:
 
@@ -177,16 +180,22 @@
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Assembly/Writer.h:
 
-/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/InstIterator.h:
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/raw_ostream.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SetVector.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ValueSymbolTable.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/StringMap.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/Allocator.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/AlignOf.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Function.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalValue.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h:
-
-/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/raw_ostream.h:
-
-/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SetVector.h:
-
-/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/SmallSet.h:

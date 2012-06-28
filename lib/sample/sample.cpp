@@ -2,11 +2,12 @@
 #include "llvm/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Assembly/Writer.h"
-#include "llvm/Support/CallSite.h"
-#include "llvm/Support/InstIterator.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ValueSymbolTable.h"
+#include "llvm/Function.h"
+
 using namespace llvm;
 
 namespace {
@@ -19,11 +20,7 @@ namespace {
             Unknown
         };
 
-        static const char *const DepTypeStr[];
-
-        typedef PointerIntPair<const Instruction *, 2, DepType> InstTypePair;
-        typedef std::pair<InstTypePair, const BasicBlock *> Dep;
-        typedef SmallSetVector<Dep, 4> DepSet;
+        typedef SmallSetVector<const Instruction *, 4> DepSet;
         typedef DenseMap<const Instruction *, DepSet> DepSetMap;
         DepSetMap Deps;
 
@@ -35,111 +32,43 @@ namespace {
 
         virtual bool runOnFunction(Function &F);
 
-        void print(raw_ostream &OS, const Module * = 0) const;
-        void addEdge(int, int, std::pair<int, bool> marker[]) const;
+        //void print(raw_ostream &OS, const Module * = 0) const;
+        //void addEdge(int, int, std::pair<int, bool> marker[]) const;
 
-        virtual void getAnalysisUsage(AnalysisUsage &Info) const {
-            Info.addRequiredTransitive<AliasAnalysis>();
-            Info.addRequiredTransitive<MemoryDependenceAnalysis>();
-            Info.setPreservesAll();
-        }
 
         virtual void releaseMemory() {
             Deps.clear();
             F = 0;
         }
 
-        private:
-        static InstTypePair getInstTypePair(MemDepResult dep) {
-            if (dep.isClobber())
-                return InstTypePair(dep.getInst(), Clobber);
-            if (dep.isDef())
-                return InstTypePair(dep.getInst(), Def);
-            if (dep.isNonFuncLocal())
-                return InstTypePair(dep.getInst(), NonFuncLocal);
-            assert(dep.isUnknown() && "unexptected dependence type");
-            return InstTypePair(dep.getInst(), Unknown);
-        }
-        static InstTypePair getInstTypePair(const Instruction* inst, DepType type) {
-            return InstTypePair(inst, type);
-        }
     };
 }
 
 char DrawMemDep::ID = 0;
 
-const char *const DrawMemDep::DepTypeStr[]
-= {"Clobber", "Def", "NonFuncLocal", "Unknown"};
 
 bool DrawMemDep::runOnFunction(Function &F) {
     this->F = &F;
     instVector.clear();
-    AliasAnalysis &AA = getAnalysis<AliasAnalysis>();
-    MemoryDependenceAnalysis &MDA = getAnalysis<MemoryDependenceAnalysis>();
 
-    // All this code uses non-const interfaces because MemDep is not
-    // const-friendly, though nothing is actually modified.
-    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-        Instruction *Inst = &*I;
+    errs() << "In function: " << F.getName() << '\n';
 
-        if (!Inst->mayReadFromMemory() && !Inst->mayWriteToMemory())
-            continue;
-
-        instVector.push_back(Inst);
-
-        MemDepResult Res = MDA.getDependency(Inst);
-        if (!Res.isNonLocal()) {
-            Deps[Inst].insert(std::make_pair(getInstTypePair(Res),
-                        static_cast<BasicBlock *>(0)));
-        } else if (CallSite CS = cast<Value>(Inst)) {
-            const MemoryDependenceAnalysis::NonLocalDepInfo &NLDI =
-                MDA.getNonLocalCallDependency(CS);
-
-            DepSet &InstDeps = Deps[Inst];
-            for (MemoryDependenceAnalysis::NonLocalDepInfo::const_iterator
-                    I = NLDI.begin(), E = NLDI.end(); I != E; ++I) {
-                const MemDepResult &Res = I->getResult();
-                InstDeps.insert(std::make_pair(getInstTypePair(Res), I->getBB()));
-            }
-        } else {
-            SmallVector<NonLocalDepResult, 4> NLDI;
-            if (LoadInst *LI = dyn_cast<LoadInst>(Inst)) {
-                if (!LI->isUnordered()) {
-                    // FIXME: Handle atomic/volatile loads.
-                    Deps[Inst].insert(std::make_pair(getInstTypePair(0, Unknown),
-                                static_cast<BasicBlock *>(0)));
-                    continue;
-                }
-                AliasAnalysis::Location Loc = AA.getLocation(LI);
-                MDA.getNonLocalPointerDependency(Loc, true, LI->getParent(), NLDI);
-            } else if (StoreInst *SI = dyn_cast<StoreInst>(Inst)) {
-                if (!SI->isUnordered()) {
-                    // FIXME: Handle atomic/volatile stores.
-                    Deps[Inst].insert(std::make_pair(getInstTypePair(0, Unknown),
-                                static_cast<BasicBlock *>(0)));
-                    continue;
-                }
-                AliasAnalysis::Location Loc = AA.getLocation(SI);
-                MDA.getNonLocalPointerDependency(Loc, false, SI->getParent(), NLDI);
-            } else if (VAArgInst *VI = dyn_cast<VAArgInst>(Inst)) {
-                AliasAnalysis::Location Loc = AA.getLocation(VI);
-                MDA.getNonLocalPointerDependency(Loc, false, VI->getParent(), NLDI);
-            } else {
-                llvm_unreachable("Unknown memory instruction!");
-            }
-
-            DepSet &InstDeps = Deps[Inst];
-            for (SmallVectorImpl<NonLocalDepResult>::const_iterator
-                    I = NLDI.begin(), E = NLDI.end(); I != E; ++I) {
-                const MemDepResult &Res = I->getResult();
-                InstDeps.insert(std::make_pair(getInstTypePair(Res), I->getBB()));
-            }
+    const ValueSymbolTable &vTable = F.getValueSymbolTable();
+    for (ValueSymbolTable::const_iterator I = vTable.begin(), E = vTable.end(); I != E; ++I) {
+        const Value &tmp = *I->getValue();
+        errs() << tmp.getName() << '\n';
+        for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I) {
+            const User *user = I.getUse().getUser();
+            user->print(errs());
+            errs() << '\n';
         }
+
     }
-    print(errs(), NULL);
+    //print(errs(), NULL);
     return false;
 }
 
+/*
 void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
     OS << "digraph tmp{\n";
     OS << "node [ \n shape = \"record\"\n]; ";
@@ -200,14 +129,12 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
 
         }
 
-        /*
            for(int i = 0; i < Deps.size(); ++i) 
            {
            if( marker[i].second ) 
            OS << "depth is " << marker[i].first \
            << ", terminator? " << marker[i].second << "\n";
            }
-           */
         addEdge(0, int(instVector.size()), marker);
         OS << "}\n";
 
@@ -232,6 +159,7 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
             }
         addEdge(start+1, end, marker);
     }
+*/
 
     static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
 
