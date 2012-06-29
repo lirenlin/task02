@@ -56,7 +56,27 @@ bool DrawMemDep::runOnFunction(Function &F) {
     const ValueSymbolTable &vTable = F.getValueSymbolTable();
     for (ValueSymbolTable::const_iterator I = vTable.begin(), E = vTable.end(); I != E; ++I) {
         const Value &tmp = *I->getValue();
-        errs() << tmp.getName() << '\n';
+
+        // skip basic block entry value
+        if(tmp.getValueID() == Value::BasicBlockVal) continue;
+
+        errs() << "Value name: " << tmp.getName() \
+            << ", ID: " << tmp.getValueID() << ", Inst:";
+        tmp.print(errs()); errs() << '\n';
+        switch (tmp.getValueID() - Value::InstructionVal)
+        {
+            case Instruction::Alloca:
+                //errs() << tmp.getName() << "\n";
+                break;
+            case Instruction::Add:
+                //errs() << tmp.getName() << "\n";
+                break;
+            case Instruction::Call:
+                //errs() << tmp.getName() << "\n";
+                break;
+            default:
+                break;
+        }
         for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I) {
             const User *user = I.getUse().getUser();
             user->print(errs());
