@@ -66,7 +66,12 @@
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/AlignOf.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Function.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalValue.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Module.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalVariable.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalAlias.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Metadata.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/FoldingSet.h
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Analysis/MemoryDependenceAnalysis.h:
 
@@ -199,3 +204,13 @@
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalValue.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Argument.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Module.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalVariable.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalAlias.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Metadata.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/FoldingSet.h:
