@@ -54,7 +54,8 @@ bool DrawMemDep::runOnFunction(Function &F) {
     errs() << "In function: " << F.getName() << '\n';
 
     const ValueSymbolTable &vTable = F.getValueSymbolTable();
-    for (ValueSymbolTable::const_iterator I = vTable.begin(), E = vTable.end(); I != E; ++I) {
+    for (ValueSymbolTable::const_iterator I = vTable.begin(), E = vTable.end(); I != E; ++I)
+    {
         const Value &tmp = *I->getValue();
 
         // skip basic block entry value
@@ -62,9 +63,14 @@ bool DrawMemDep::runOnFunction(Function &F) {
 
         errs() << "Value name: " << tmp.getName() \
             << ", ID: " << tmp.getValueID() << ", Inst:";
-        tmp.print(errs()); errs() << '\n';
+
+        tmp.print(errs()); errs() << "\n";
         switch (tmp.getValueID() - Value::InstructionVal)
         {
+            // I don't know why no this type of value
+            case Instruction::Load:
+                errs() << "Load" << "\n";
+                break;
             case Instruction::Alloca:
                 //errs() << tmp.getName() << "\n";
                 break;
@@ -77,11 +83,13 @@ bool DrawMemDep::runOnFunction(Function &F) {
             default:
                 break;
         }
-        for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I) {
+        for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I)
+        {
             const User *user = I.getUse().getUser();
             user->print(errs());
             errs() << '\n';
         }
+        errs() << '\n';
 
     }
     //print(errs(), NULL);
