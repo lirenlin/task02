@@ -71,7 +71,8 @@
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalVariable.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/GlobalAlias.h \
  /home/lirenlin/Documents/hiwi/llvm/include/llvm/Metadata.h \
- /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/FoldingSet.h
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/FoldingSet.h \
+ /home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/InstIterator.h
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Analysis/MemoryDependenceAnalysis.h:
 
@@ -214,3 +215,5 @@
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/Metadata.h:
 
 /home/lirenlin/Documents/hiwi/llvm/include/llvm/ADT/FoldingSet.h:
+
+/home/lirenlin/Documents/hiwi/llvm/include/llvm/Support/InstIterator.h:

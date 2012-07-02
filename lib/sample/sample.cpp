@@ -8,38 +8,34 @@
 #include "llvm/ValueSymbolTable.h"
 #include "llvm/Function.h"
 #include "llvm/Module.h"
+#include "llvm/Support/InstIterator.h"
+
+
+#include <stack>
 
 using namespace llvm;
 
 namespace {
     struct DrawMemDep : public ModulePass {
 
-        enum DepType {
-            Clobber = 0,
-            Def,
-            NonFuncLocal,
-            Unknown
-        };
-
-        typedef SmallSetVector<const Instruction *, 4> DepSet;
-        typedef DenseMap<const Instruction *, DepSet> DepSetMap;
+        typedef std::stack<const User *> DepSet;
+        typedef DenseMap<const Value *, DepSet> DepSetMap;
         DepSetMap Deps;
+        std::vector<DepSetMap> bVector ;
 
         static char ID; // Pass identifcation, replacement for typeid
-        const Function *F;
-        std::vector<const Instruction * > instVector ;
         DrawMemDep() : ModulePass(ID) {
         }
 
         virtual bool runOnModule(Module &F);
 
-        //void print(raw_ostream &OS, const Module * = 0) const;
+        void print(raw_ostream &OS, const Module * = 0) const;
         //void addEdge(int, int, std::pair<int, bool> marker[]) const;
 
 
         virtual void releaseMemory() {
             Deps.clear();
-            F = 0;
+            bVector.clear();
         }
 
     };
@@ -49,16 +45,46 @@ char DrawMemDep::ID = 0;
 
 
 bool DrawMemDep::runOnModule(Module &M) {
-    instVector.clear();
-
-
     const Module::GlobalListType &gList = M.getGlobalList();
     for (Module::GlobalListType::const_iterator I = gList.begin(), E = gList.end(); I != E; ++I)
-        errs() << I->getName() << '\n';
+    {
+        //errs() << I->getName() << '\n';
+        for (GlobalValue::const_use_iterator II = I->use_begin(), E = I->use_end(); II != E; ++II) {
+            const User *user = II.getUse().getUser();
+            Deps[I].push(user);
+            //user->print(errs());
+            //errs() << '\n';
+        }
+    }
 
     const Module::FunctionListType &fList = M.getFunctionList();
-    for (Module::FunctionListType::const_iterator I = fList.begin(), E = fList.end(); I != E; ++I) {
+    for (Module::FunctionListType::const_iterator I = fList.begin(), E = fList.end(); I != E; ++I)
+    {
         const Function *F = &*I;
+        //errs() << "In function " << F->getName() << '\n';
+        //errs() << "******************\n";
+
+        for(Function::const_iterator J = F->begin(), E = F->end(); J != E; ++J)
+            for(BasicBlock::const_iterator I = J->begin(), E = J->end(); I != E; ++I)
+            {
+                //if (I->mayReadFromMemory() || I->mayWriteToMemory())
+                if (const LoadInst *LI = dyn_cast<LoadInst>(&*I))
+                {
+                    //const Value *value =  LI->getPointerOperand();
+                    //Deps[value].push(LI);
+                    //LI->print(errs());
+                    //LI->getPointerOperand()->print(errs());
+                    //errs() << "\n";
+                    for (Value::const_use_iterator I = LI->use_begin(), E = LI->use_end(); I != E; ++I) {
+                        const User *user = I.getUse().getUser();
+                        Deps[LI].push(user);
+                        //user->print(errs());
+                        //errs() << '\n';
+                    }
+                }
+            }
+
+
         const ValueSymbolTable &vTable = F->getValueSymbolTable();
         for (ValueSymbolTable::const_iterator I = vTable.begin(), E = vTable.end(); I != E; ++I) {
             const Value &tmp = *I->getValue();
@@ -66,9 +92,9 @@ bool DrawMemDep::runOnModule(Module &M) {
             // skip basic block entry value
             if(tmp.getValueID() == Value::BasicBlockVal) continue;
 
-            errs() << "Value name: " << tmp.getName() \
-                << ", ID: " << tmp.getValueID() << ", Inst:";
-            tmp.print(errs()); errs() << '\n';
+            //errs() << "Value name: " << tmp.getName() \
+            //    << ", ID: " << tmp.getValueID() << ", Inst:";
+            //tmp.print(errs()); errs() << '\n';
             switch (tmp.getValueID() - Value::InstructionVal)
             {
                 case Instruction::Alloca:
@@ -85,108 +111,75 @@ bool DrawMemDep::runOnModule(Module &M) {
             }
             for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I) {
                 const User *user = I.getUse().getUser();
-                user->print(errs());
-                errs() << '\n';
+                //user->print(errs());
+                //errs() << '\n';
+                Deps[&tmp].push(user);
+            }
+
+        }
+
+    }
+
+    print(errs(), NULL);
+    return false;
+}
+
+void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
+    OS << "digraph module{\n";
+    OS << "node [ \n shape = \"record\"\n];\n ";
+
+    //OS << "subgraph " << "funName" << "{\n" \
+    //<< "\tlabel=\"" << "function name" << "\";\n";
+    //OS << "}\n";
+
+    for (DepSetMap::const_iterator DI = Deps.begin(), E = Deps.end(); DI != E; ++DI) {
+        const Value *Inst = DI->first;
+        const Value *root = Inst;
+
+        OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
+        root->print(OS);
+        OS << "\"];\n";
+
+        DepSet InstDeps = DI->second;
+
+        while (!InstDeps.empty())
+        {
+            const User *DepInst = InstDeps.top();
+            InstDeps.pop();
+
+            DepSetMap::const_iterator tmp = Deps.find(DepInst);
+            if(tmp == Deps.end())
+            {
+                OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
+                DepInst->print(OS);
+                OS << "\"];\n";
+
+            }
+
+            // reset the root node
+            if(const Instruction *I = dyn_cast<Instruction>(DepInst))
+            {
+                if(I->getOpcode() == Instruction::Store)
+                {
+                    // link
+                    OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
+                        << static_cast<const void *>(Inst) << "; \n";
+                    root = I;
+                }
+                else
+                {
+                    // link
+                    OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
+                        << static_cast<const void *>(root) << "; \n";
+                }
             }
 
         }
     }
-    //print(errs(), NULL);
-    return false;
-}
-
-/*
-   void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
-   OS << "digraph tmp{\n";
-   OS << "node [ \n shape = \"record\"\n]; ";
-
-// depth and terminator
-std::pair<int, bool> marker[20] ;
-int index = 0;
-
-for (std::vector<const Instruction *>::const_iterator I = instVector.begin(), E = instVector.end();\
-I != E; ++I, ++index) {
-const Instruction *Inst = *I;
-
-DepSetMap::const_iterator DI = Deps.find(Inst);
-if (DI == Deps.end())
-continue;
-
-OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
-Inst->print(OS);
-OS << "\"];\n";
-
-const DepSet &InstDeps = DI->second;
-
-for (DepSet::const_iterator I = InstDeps.begin(), E = InstDeps.end();
-I != E; ++I) {
-const Instruction *DepInst = I->first.getPointer();
-DepType type = I->first.getInt();
-const BasicBlock *DepBB = I->second;
-
-if (DepInst) {
-std::vector<const Instruction *>::const_iterator tmp = std::find(instVector.begin(), instVector.end(), DepInst);
-//DepSetMap::const_iterator tmp = Deps.find(DepInst);
-if(tmp == instVector.end())
-{
-marker[index].first = 1;
-marker[index].second = true;
-
-OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
-DepInst->print(OS);
-OS << "\"];\n";
+    OS << "}\n";
 
 }
-else 
-{
-int pre_index = std::distance(instVector.begin(), tmp);
-marker[pre_index].second = false;
-
-marker[index].first = marker[pre_index].first + 1;
-marker[index].second = true;
-}
-
-// link
-OS << "\tNode"<< static_cast<const void *>(DepInst) << " -> Node" \
-<< static_cast<const void *>(Inst) << " ";
-OS << "[label=\""<< DepTypeStr[type] << "\"]"<< "; \n";
-
-}
-}
-
-}
-
-for(int i = 0; i < Deps.size(); ++i) 
-{
-if( marker[i].second ) 
-OS << "depth is " << marker[i].first \
-<< ", terminator? " << marker[i].second << "\n";
-}
-addEdge(0, int(instVector.size()), marker);
-OS << "}\n";
-
-}
-
-void DrawMemDep::addEdge(int start, int end, std::pair<int, bool> marker[]) const
-{
-    if(start == end) return;
-    for(int i = start; i < end; ++i)
-        if(marker[i].second)
-        {
-            start = i;
-            break;
-        }
-
-    for(int i = start+1; i < end; ++i)
-        if(marker[i].second)
-        {
-            errs() << "\tNode"<< static_cast<const void *>(instVector[start]) << " -> Node" \
-                << static_cast<const void *>(instVector[i]) << " ";
-            errs() << "[style=dotted];\n";
-        }
-    addEdge(start+1, end, marker);
-}
-*/
 
 static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
+
 
