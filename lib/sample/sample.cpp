@@ -147,8 +147,15 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
 
         //check if the node belongs to current function
         //errs() << Inst->getName() << '\n' ;
-        if(dyn_cast<Instruction>(Inst))
-        if(dyn_cast<Instruction>(Inst)->getParent()->getParent() == F)
+        if(Inst->getValueID() == Value::ArgumentVal)
+        {
+            OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
+            root->print(OS);
+            OS << "\"];\n";
+        }
+
+        if(const Instruction * tmp = dyn_cast<Instruction>(Inst))
+        if(tmp->getParent()->getParent() == F)
         {
             OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
             root->print(OS);
