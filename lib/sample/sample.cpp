@@ -34,7 +34,6 @@ namespace {
 
         virtual void releaseMemory() {
             Deps.clear();
-            bVector.clear();
         }
 
     };
@@ -47,9 +46,12 @@ bool DrawMemDep::runOnModule(Module &M) {
     const Module::GlobalListType &gList = M.getGlobalList();
     for (Module::GlobalListType::const_iterator I = gList.begin(), E = gList.end(); I != E; ++I)
     {
+        //errs() << I->getName() << '\n';
         for (GlobalValue::const_use_iterator II = I->use_begin(), E = I->use_end(); II != E; ++II) {
             const User *user = II.getUse().getUser();
             Deps[I].push(user);
+            //user->print(errs());
+            //errs() << '\n';
         }
     }
 
@@ -107,7 +109,7 @@ bool DrawMemDep::runOnModule(Module &M) {
 
     }
 
-    print(errs(), NULL);
+    print(errs(), &M);
     return false;
 }
 
@@ -115,17 +117,43 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
     OS << "digraph module{\n";
     OS << "node [ \n shape = \"record\"\n];\n ";
 
-    //OS << "subgraph " << "funName" << "{\n" \
-    //<< "\tlabel=\"" << "function name" << "\";\n";
-    //OS << "}\n";
+    // print the global variable first, because it will be ignored in the succedent loop
+    OS << "subgraph " << "cluster0" << "{\n"\
+        << "\tlabel=\"" << "global" << "\";\n"\
+        << "\tcolor=lightgrey;\n"\
+        << "\tstyle=filled;\n\n";
+    const Module::GlobalListType &gList = M->getGlobalList();
+    for (Module::GlobalListType::const_iterator I = gList.begin(), E = gList.end(); I != E; ++I)
+    {
+            OS << "\tNode"<< static_cast<const void *>(I) << " [label=\"";
+            I->print(OS);
+            OS << "\"];\n";
+    }
+    OS << "}\n";
+
+    const Module::FunctionListType &fList = M->getFunctionList();
+    int i = 1;
+    for (Module::FunctionListType::const_iterator I = fList.begin(), E = fList.end(); I != E; ++I, ++i)
+    {
+        const Function *F = &*I;
+        OS << "subgraph " << "cluster" << i << "{\n"\
+            << "\tlabel=\"" << F->getName() << "\";\n"\
+            << "\tcolor=lightgrey;\n"\
+            << "\tstyle=filled;\n\n";
 
     for (DepSetMap::const_iterator DI = Deps.begin(), E = Deps.end(); DI != E; ++DI) {
         const Value *Inst = DI->first;
         const Value *root = Inst;
 
-        OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
-        root->print(OS);
-        OS << "\"];\n";
+        //check if the node belongs to current function
+        //errs() << Inst->getName() << '\n' ;
+        if(dyn_cast<Instruction>(Inst))
+        if(dyn_cast<Instruction>(Inst)->getParent()->getParent() == F)
+        {
+            OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
+            root->print(OS);
+            OS << "\"];\n";
+        }
 
         DepSet InstDeps = DI->second;
 
@@ -137,15 +165,22 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
             DepSetMap::const_iterator tmp = Deps.find(DepInst);
             if(tmp == Deps.end())
             {
-                OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
-                DepInst->print(OS);
-                OS << "\"];\n";
+                //check if the node belongs to current function
+                if(dyn_cast<Instruction>(DepInst)->getParent()->getParent() == F)
+                {
+                    OS << "\tNode"<< static_cast<const void *>(DepInst) << " [label=\"";
+                    DepInst->print(OS);
+                    OS << "\"];\n";
+                }
 
             }
 
             // reset the root node
             if(const Instruction *I = dyn_cast<Instruction>(DepInst))
             {
+                // draw the link only once
+                if(I->getParent()->getParent() != F) continue;
+                
                 if(I->getOpcode() == Instruction::Store)
                 {
                     // link
@@ -163,10 +198,13 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
 
         }
     }
+        OS << "}\n";
+    }
     OS << "}\n";
 
 }
 
 static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
+
 
 
