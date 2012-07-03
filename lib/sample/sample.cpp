@@ -21,7 +21,6 @@ namespace {
         typedef std::stack<const User *> DepSet;
         typedef DenseMap<const Value *, DepSet> DepSetMap;
         DepSetMap Deps;
-        std::vector<DepSetMap> bVector ;
 
         static char ID; // Pass identifcation, replacement for typeid
         DrawMemDep() : ModulePass(ID) {
@@ -48,12 +47,9 @@ bool DrawMemDep::runOnModule(Module &M) {
     const Module::GlobalListType &gList = M.getGlobalList();
     for (Module::GlobalListType::const_iterator I = gList.begin(), E = gList.end(); I != E; ++I)
     {
-        //errs() << I->getName() << '\n';
         for (GlobalValue::const_use_iterator II = I->use_begin(), E = I->use_end(); II != E; ++II) {
             const User *user = II.getUse().getUser();
             Deps[I].push(user);
-            //user->print(errs());
-            //errs() << '\n';
         }
     }
 
@@ -61,8 +57,6 @@ bool DrawMemDep::runOnModule(Module &M) {
     for (Module::FunctionListType::const_iterator I = fList.begin(), E = fList.end(); I != E; ++I)
     {
         const Function *F = &*I;
-        //errs() << "In function " << F->getName() << '\n';
-        //errs() << "******************\n";
 
         for(Function::const_iterator J = F->begin(), E = F->end(); J != E; ++J)
             for(BasicBlock::const_iterator I = J->begin(), E = J->end(); I != E; ++I)
@@ -70,16 +64,9 @@ bool DrawMemDep::runOnModule(Module &M) {
                 //if (I->mayReadFromMemory() || I->mayWriteToMemory())
                 if (const LoadInst *LI = dyn_cast<LoadInst>(&*I))
                 {
-                    //const Value *value =  LI->getPointerOperand();
-                    //Deps[value].push(LI);
-                    //LI->print(errs());
-                    //LI->getPointerOperand()->print(errs());
-                    //errs() << "\n";
                     for (Value::const_use_iterator I = LI->use_begin(), E = LI->use_end(); I != E; ++I) {
                         const User *user = I.getUse().getUser();
                         Deps[LI].push(user);
-                        //user->print(errs());
-                        //errs() << '\n';
                     }
                 }
             }
