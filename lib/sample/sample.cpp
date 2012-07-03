@@ -10,7 +10,6 @@
 #include "llvm/Module.h"
 #include "llvm/Support/InstIterator.h"
 
-
 #include <stack>
 
 using namespace llvm;
@@ -26,11 +25,9 @@ namespace {
         DrawMemDep() : ModulePass(ID) {
         }
 
-        virtual bool runOnModule(Module &F);
+        virtual bool runOnModule(Module &M);
 
         void print(raw_ostream &OS, const Module * = 0) const;
-        //void addEdge(int, int, std::pair<int, bool> marker[]) const;
-
 
         virtual void releaseMemory() {
             Deps.clear();
@@ -46,12 +43,9 @@ bool DrawMemDep::runOnModule(Module &M) {
     const Module::GlobalListType &gList = M.getGlobalList();
     for (Module::GlobalListType::const_iterator I = gList.begin(), E = gList.end(); I != E; ++I)
     {
-        //errs() << I->getName() << '\n';
         for (GlobalValue::const_use_iterator II = I->use_begin(), E = I->use_end(); II != E; ++II) {
             const User *user = II.getUse().getUser();
             Deps[I].push(user);
-            //user->print(errs());
-            //errs() << '\n';
         }
     }
 
@@ -81,23 +75,6 @@ bool DrawMemDep::runOnModule(Module &M) {
             // skip basic block entry value
             if(tmp.getValueID() == Value::BasicBlockVal) continue;
 
-            //errs() << "Value name: " << tmp.getName() \
-            //    << ", ID: " << tmp.getValueID() << ", Inst:";
-            //tmp.print(errs()); errs() << '\n';
-            switch (tmp.getValueID() - Value::InstructionVal)
-            {
-                case Instruction::Alloca:
-                    //errs() << tmp.getName() << "\n";
-                    break;
-                case Instruction::Add:
-                    //errs() << tmp.getName() << "\n";
-                    break;
-                case Instruction::Call:
-                    //errs() << tmp.getName() << "\n";
-                    break;
-                default:
-                    break;
-            }
             for (Value::const_use_iterator I = tmp.use_begin(), E = tmp.use_end(); I != E; ++I) {
                 const User *user = I.getUse().getUser();
                 //user->print(errs());
@@ -145,8 +122,7 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
         const Value *Inst = DI->first;
         const Value *root = Inst;
 
-        //check if the node belongs to current function
-        //errs() << Inst->getName() << '\n' ;
+        // the function arguments
         if(Inst->getValueID() == Value::ArgumentVal)
         {
             OS << "\tNode"<< static_cast<const void *>(Inst) << " [label=\"";
@@ -154,6 +130,7 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
             OS << "\"];\n";
         }
 
+        //check if the node belongs to current function
         if(const Instruction * tmp = dyn_cast<Instruction>(Inst))
         if(tmp->getParent()->getParent() == F)
         {
@@ -212,6 +189,3 @@ void DrawMemDep::print(raw_ostream &OS, const Module *M) const {
 }
 
 static RegisterPass<DrawMemDep> X("samplePass", "print the memory dependency", true, true);
-
-
-
