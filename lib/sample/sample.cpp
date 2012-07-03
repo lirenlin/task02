@@ -34,7 +34,6 @@ namespace {
 
         virtual void releaseMemory() {
             Deps.clear();
-            bVector.clear();
         }
 
     };
